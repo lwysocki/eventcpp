@@ -1,5 +1,5 @@
 /**
- * \brief	Events system
+ * \brief	C++ Events
  * \author	Lukasz Wysocki
  */
 
