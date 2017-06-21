@@ -4,6 +4,8 @@ This is an implementation of the C#-like events for C++.
 
 ## Usage
 
+Following example shows that single Event instance can handle both functions and non-static methods.
+
 ```C++
 #include <event.hpp>
 
@@ -57,16 +59,16 @@ int main()
 
     Event<int (int)> e;
 
-    e.Attach(Mul2);
+    e.Attach(Mul2); // subscribe function
     e.Attach(Add2);
-    e.Attach<Abs>(&Abs::Sub, a);
+    e.Attach<Abs>(&Abs::Sub, a); // subscribe method Sub on object a
     e.Attach<B>(&B::Sub, b);
     e.Attach(&Abs::Sub, b1);
     e.Attach(&A::Sub, a2);
     e.Attach(&B::Sub, b2);
     e.Attach(&B::Div, b2);
 
-    int result = e(2);
+    int result = e(2); // invoke event
 
     e.Detach(&Abs::Sub, b2); // remove subscriber by base class member, b2.Div still receive message
 
