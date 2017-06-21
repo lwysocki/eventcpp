@@ -104,38 +104,38 @@ template<typename TFunc> class Event;
 template<typename TRet, typename ...Args>
 class Event<TRet(Args...)>
 {
-	using _TFunc = TRet(Args...);
-	using _TFuncPtr = typename std::add_pointer<_TFunc>::type;
-	using _TInvokable = InvokableAbstract<TRet, Args...>;
+    using _TFunc = TRet(Args...);
+    using _TFuncPtr = typename std::add_pointer<_TFunc>::type;
+    using _TInvokable = InvokableAbstract<TRet, Args...>;
 
 public:
-	template<typename ..._Args>
-	TRet operator() (_Args&&... args)
-	{
-		TRet ret;
+    template<typename ..._Args>
+    TRet operator() (_Args&&... args)
+    {
+        TRet ret;
 
-		for(auto invokable : _invokables)
-		{
-			ret = std::invoke(*invokable, std::forward<Args>(args)...);
-		}
+        for(auto invokable : _invokables)
+        {
+            ret = std::invoke(*invokable, std::forward<Args>(args)...);
+        }
 
-		return ret;
-	}
+        return ret;
+    }
 
-	void Attach(_TFuncPtr func)
-	{
-		std::shared_ptr<InvokableFunc<TRet, Args...>> ptr;
-		ptr.reset(new InvokableFunc<TRet, Args... >(func));
-		_invokables.push_back(ptr);
-	}
+    void Attach(_TFuncPtr func)
+    {
+        std::shared_ptr<InvokableFunc<TRet, Args...>> ptr;
+        ptr.reset(new InvokableFunc<TRet, Args... >(func));
+        _invokables.push_back(ptr);
+    }
 
-	template<typename TClass>
-	void Attach(TRet(TClass::* func) (Args...), TClass& obj)
-	{
-		std::shared_ptr<InvokableMember<TRet, TClass, Args...>> ptr;
-		ptr.reset(new InvokableMember<TRet, TClass, Args...>(func, obj));
-		_invokables.push_back(ptr);
-	}
+    template<typename TClass>
+    void Attach(TRet(TClass::* func) (Args...), TClass& obj)
+    {
+        std::shared_ptr<InvokableMember<TRet, TClass, Args...>> ptr;
+        ptr.reset(new InvokableMember<TRet, TClass, Args...>(func, obj));
+        _invokables.push_back(ptr);
+    }
 
     template<typename TClass>
     void Attach(TRet(TClass::* func) (Args...), TClass* obj)
@@ -143,13 +143,13 @@ public:
         Attach(func, *obj);
     }
 
-	template<typename TBase, typename TClass>
-	void Attach(TRet(TBase::* func) (Args...), TClass& obj)
-	{
-		std::shared_ptr<InvokableMember<TRet, TClass, Args...>> ptr;
-		ptr.reset(new InvokableMember<TRet, TClass, Args...>(func, obj));
-		_invokables.push_back(ptr);
-	}
+    template<typename TBase, typename TClass>
+    void Attach(TRet(TBase::* func) (Args...), TClass& obj)
+    {
+        std::shared_ptr<InvokableMember<TRet, TClass, Args...>> ptr;
+        ptr.reset(new InvokableMember<TRet, TClass, Args...>(func, obj));
+        _invokables.push_back(ptr);
+    }
 
     template<typename TBase, typename TClass>
     void Attach(TRet(TBase::* func) (Args...), TClass* obj)
@@ -157,18 +157,18 @@ public:
         Attach(func, *obj);
     }
 
-	void Detach(_TFuncPtr func)
-	{
-		InvokableFunc<TRet, Args...> invokable(func);
-		Remove(invokable);
-	}
+    void Detach(_TFuncPtr func)
+    {
+        InvokableFunc<TRet, Args...> invokable(func);
+        Remove(invokable);
+    }
 
-	template<typename TClass>
-	void Detach(_TFunc TClass::* func, TClass& obj)
-	{
-		InvokableMember<TRet, TClass, Args...> invokable(func, obj);
-		Remove(invokable);
-	}
+    template<typename TClass>
+    void Detach(_TFunc TClass::* func, TClass& obj)
+    {
+        InvokableMember<TRet, TClass, Args...> invokable(func, obj);
+        Remove(invokable);
+    }
 
     template<typename TClass>
     void Detach(_TFunc TClass::* func, TClass* obj)
@@ -176,12 +176,12 @@ public:
         Detach(func, *obj);
     }
 
-	template<typename TBase, typename TClass>
-	void Detach(_TFunc TBase::* func, TClass& obj)
-	{
-		InvokableMember<TRet, TClass, Args...> invokable(func, obj);
-		Remove(invokable);
-	}
+    template<typename TBase, typename TClass>
+    void Detach(_TFunc TBase::* func, TClass& obj)
+    {
+        InvokableMember<TRet, TClass, Args...> invokable(func, obj);
+        Remove(invokable);
+    }
 
     template<typename TBase, typename TClass>
     void Detach(_TFunc TBase::* func, TClass* obj)
@@ -190,22 +190,22 @@ public:
     }
 
 private:
-	std::list<std::shared_ptr<_TInvokable>> _invokables;
+    std::list<std::shared_ptr<_TInvokable>> _invokables;
 
-	void Remove(const _TInvokable& invokable)
-	{
-		auto it = _invokables.begin();
+    void Remove(const _TInvokable& invokable)
+    {
+        auto it = _invokables.begin();
 
-		while(it != _invokables.end() && (*(*it)) != invokable)
-		{
-			it++;
-		}
+        while(it != _invokables.end() && (*(*it)) != invokable)
+        {
+            it++;
+        }
 
-		if(it != _invokables.end())
-		{
-			_invokables.erase(it);
-		}
-	}
+        if(it != _invokables.end())
+        {
+            _invokables.erase(it);
+        }
+    }
 };
 
 #endif // !__event__
