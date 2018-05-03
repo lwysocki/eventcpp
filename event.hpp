@@ -11,6 +11,7 @@
 #include <memory>
 #include <list>
 #include <type_traits>
+#include <string>
 
 namespace
 {
@@ -28,7 +29,7 @@ namespace
 	{
 	public:
 		virtual TRet operator() (Args&&...) = 0;
-		virtual uintptr_t GetFuncPtr() const = 0;
+		virtual std::string GetFuncPtr() const = 0;
 		virtual uintptr_t GetObjPtr() const = 0;
 	};
 
@@ -50,9 +51,12 @@ namespace
 			return std::invoke(_func, std::forward<Args>(args)...);
 		}
 
-		virtual uintptr_t GetFuncPtr() const
+		virtual std::string GetFuncPtr() const
 		{
-			return reinterpret_cast<uintptr_t>(_func);
+            auto tmp = static_cast<const char*>(static_cast<const void*>(&_func));
+            std::string tmpstr(tmp);
+
+            return tmpstr;
 		}
 
 		virtual uintptr_t GetObjPtr() const
@@ -83,17 +87,17 @@ namespace
 			return std::invoke(_func, _obj, std::forward<Args>(args)...);
 		}
 
-		virtual uintptr_t GetFuncPtr() const
+		virtual std::string GetFuncPtr() const
 		{
-			uintptr_t converted;
-			std::memcpy(&converted, &_func, sizeof(_func));
+            auto tmp = static_cast<const char*>(static_cast<const void*>(&_func));
+            std::string tmpstr(tmp);
 
-			return converted;
+			return tmpstr;
 		}
 
 		virtual uintptr_t GetObjPtr() const
 		{
-			return reinterpret_cast<uintptr_t>(&_obj);
+            return reinterpret_cast<uintptr_t>(&_obj);
 		}
 
 	private:
