@@ -1,6 +1,10 @@
 # C++ Events
 
-This is an implementation of the C#-like events for C++.
+Cpp_events is a header-only library that implement C#-like events for C++.
+
+## Installation
+
+Copy header file to folder of your choice and include it in your project.
 
 ## Usage
 
@@ -57,7 +61,7 @@ int main()
     A a2;
     B* b2 = new B();
 
-    Event<int (int)> e;
+    Event::Event<int (int)> e;
 
     e.Attach(Mul2); // subscribe function
     e.Attach(Add2);
@@ -76,14 +80,10 @@ int main()
 }
 ```
 
-## Installation
-
-Copy header file to folder of your choice and include it in your project.
-
 ## Authors
 
 - Lukasz Wysocki
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
