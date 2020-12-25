@@ -1,6 +1,6 @@
-The MIT License (MIT)
+# The MIT License (MIT)
 
-Copyright 2016 Lukasz Wysocki
+Copyright (c) 2016-2018 Lukasz Wysocki
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
