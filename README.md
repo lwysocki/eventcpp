@@ -11,7 +11,7 @@ Copy header file to folder of your choice and include it in your project.
 Following example shows that single Event instance can handle both functions and non-static methods.
 
 ```C++
-#include <event.hpp>
+#include <eventcpp/event.hpp>
 
 int Mul2(int x)
 {
