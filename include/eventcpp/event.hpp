@@ -13,35 +13,35 @@
 #include <type_traits>
 #include <string>
 
-namespace Event
+namespace event
 {
-    namespace Details
+    namespace details
     {
-        template<typename TRet, typename ...Args> class InvokableAbstract;
+        template<typename TRet, typename ...Args> class invokable_abstract;
 
         template<typename TRet, typename ...Args>
-        inline bool operator!= (const InvokableAbstract<TRet, Args...>& lhs,
-            const InvokableAbstract<TRet, Args...>& rhs)
+        inline bool operator!= (const invokable_abstract<TRet, Args...>& lhs,
+            const invokable_abstract<TRet, Args...>& rhs)
         {
-            return lhs.GetFuncPtr() != rhs.GetFuncPtr() && lhs.GetObjPtr() != rhs.GetObjPtr();
+            return lhs.get_func_ptr() != rhs.get_func_ptr() && lhs.get_obj_ptr() != rhs.get_obj_ptr();
         }
 
         template<typename TRet, typename ...Args>
-        class InvokableAbstract
+        class invokable_abstract
         {
         public:
             virtual TRet operator() (Args&&...) = 0;
-            virtual std::string GetFuncPtr() const = 0;
-            virtual uintptr_t GetObjPtr() const = 0;
+            virtual std::string get_func_ptr() const = 0;
+            virtual uintptr_t get_obj_ptr() const = 0;
         };
 
         template<typename TRet, typename ...Args>
-        class InvokableFunc : public InvokableAbstract<TRet, Args...>
+        class invokable_func : public invokable_abstract<TRet, Args...>
         {
             using _TFuncPtr = typename std::add_pointer<TRet(Args...)>::type;
 
         public:
-            InvokableFunc(_TFuncPtr func) : _func(func)
+            invokable_func(_TFuncPtr func) : _func(func)
             {
             }
 
@@ -53,7 +53,7 @@ namespace Event
                 return std::invoke(_func, std::forward<Args>(args)...);
             }
 
-            std::string GetFuncPtr() const override
+            std::string get_func_ptr() const override
             {
                 auto tmp = static_cast<const char*>(static_cast<const void*>(&_func));
                 std::string tmpstr(tmp);
@@ -61,7 +61,7 @@ namespace Event
                 return tmpstr;
             }
 
-            uintptr_t GetObjPtr() const override
+            uintptr_t get_obj_ptr() const override
             {
                 return reinterpret_cast<uintptr_t>(nullptr);
             }
@@ -71,13 +71,13 @@ namespace Event
         };
 
         template<typename TRet, typename TClass, typename ...Args>
-        class InvokableMember : public InvokableAbstract<TRet, Args...>
+        class invokable_member : public invokable_abstract<TRet, Args...>
         {
             using _TFuncPtr = TRet(TClass::*) (Args...);
             using _TClassRef = typename std::add_lvalue_reference<TClass>::type;
 
         public:
-            InvokableMember(_TFuncPtr func, _TClassRef obj) : _func(func), _obj(obj)
+            invokable_member(_TFuncPtr func, _TClassRef obj) : _func(func), _obj(obj)
             {
             }
 
@@ -89,7 +89,7 @@ namespace Event
                 return std::invoke(_func, _obj, std::forward<Args>(args)...);
             }
 
-            std::string GetFuncPtr() const override
+            std::string get_func_ptr() const override
             {
                 auto tmp = static_cast<const char*>(static_cast<const void*>(&_func));
                 std::string tmpstr(tmp);
@@ -97,7 +97,7 @@ namespace Event
                 return tmpstr;
             }
 
-            uintptr_t GetObjPtr() const override
+            uintptr_t get_obj_ptr() const override
             {
                 return reinterpret_cast<uintptr_t>(&_obj);
             }
@@ -108,14 +108,14 @@ namespace Event
         };
     }
 
-    template<typename TFunc> class Event;
+    template<typename TFunc> class event;
 
     template<typename TRet, typename ...Args>
-    class Event<TRet(Args...)>
+    class event<TRet(Args...)>
     {
         using _TFunc = TRet(Args...);
         using _TFuncPtr = typename std::add_pointer<_TFunc>::type;
-        using _TInvokable = Details::InvokableAbstract<TRet, Args...>;
+        using _TInvokable = details::invokable_abstract<TRet, Args...>;
 
     public:
         template<typename ..._Args>
@@ -131,74 +131,74 @@ namespace Event
             return ret;
         }
 
-        void Attach(_TFuncPtr func)
+        void attach(_TFuncPtr func)
         {
-            std::shared_ptr<Details::InvokableFunc<TRet, Args...>> ptr(new Details::InvokableFunc<TRet, Args... >(func));
+            std::shared_ptr<details::invokable_func<TRet, Args...>> ptr(new details::invokable_func<TRet, Args... >(func));
             _invokables.push_back(ptr);
         }
 
         template<typename TClass>
-        void Attach(TRet(TClass::* func) (Args...), TClass& obj)
+        void attach(TRet(TClass::* func) (Args...), TClass& obj)
         {
-            std::shared_ptr<Details::InvokableMember<TRet, TClass, Args...>> ptr(new Details::InvokableMember<TRet, TClass, Args...>(func, obj));
+            std::shared_ptr<details::invokable_member<TRet, TClass, Args...>> ptr(new details::invokable_member<TRet, TClass, Args...>(func, obj));
             _invokables.push_back(ptr);
         }
 
         template<typename TClass>
-        void Attach(TRet(TClass::* func) (Args...), TClass* obj)
+        void attach(TRet(TClass::* func) (Args...), TClass* obj)
         {
-            Attach(func, *obj);
+            attach(func, *obj);
         }
 
         template<typename TBase, typename TClass>
-        void Attach(TRet(TBase::* func) (Args...), TClass& obj)
+        void attach(TRet(TBase::* func) (Args...), TClass& obj)
         {
-            std::shared_ptr<Details::InvokableMember<TRet, TClass, Args...>> ptr(new Details::InvokableMember<TRet, TClass, Args...>(func, obj));
+            std::shared_ptr<details::invokable_member<TRet, TClass, Args...>> ptr(new details::invokable_member<TRet, TClass, Args...>(func, obj));
             _invokables.push_back(ptr);
         }
 
         template<typename TBase, typename TClass>
-        void Attach(TRet(TBase::* func) (Args...), TClass* obj)
+        void attach(TRet(TBase::* func) (Args...), TClass* obj)
         {
-            Attach(func, *obj);
+            attach(func, *obj);
         }
 
-        void Detach(_TFuncPtr func)
+        void detach(_TFuncPtr func)
         {
-            InvokableFunc<TRet, Args...> invokable(func);
-            Remove(invokable);
-        }
-
-        template<typename TClass>
-        void Detach(_TFunc TClass::* func, TClass& obj)
-        {
-            Details::InvokableMember<TRet, TClass, Args...> invokable(func, obj);
-            Remove(invokable);
+            details::invokable_func<TRet, Args...> invokable(func);
+            remove(invokable);
         }
 
         template<typename TClass>
-        void Detach(_TFunc TClass::* func, TClass* obj)
+        void detach(_TFunc TClass::* func, TClass& obj)
         {
-            Detach(func, *obj);
+            details::invokable_member<TRet, TClass, Args...> invokable(func, obj);
+            remove(invokable);
+        }
+
+        template<typename TClass>
+        void detach(_TFunc TClass::* func, TClass* obj)
+        {
+            detach(func, *obj);
         }
 
         template<typename TBase, typename TClass>
-        void Detach(_TFunc TBase::* func, TClass& obj)
+        void detach(_TFunc TBase::* func, TClass& obj)
         {
-            InvokableMember<TRet, TClass, Args...> invokable(func, obj);
-            Remove(invokable);
+            details::invokable_member<TRet, TClass, Args...> invokable(func, obj);
+            remove(invokable);
         }
 
         template<typename TBase, typename TClass>
-        void Detach(_TFunc TBase::* func, TClass* obj)
+        void detach(_TFunc TBase::* func, TClass* obj)
         {
-            Detach(func, *obj);
+            detach(func, *obj);
         }
 
     private:
         std::list<std::shared_ptr<_TInvokable>> _invokables;
 
-        void Remove(const _TInvokable& invokable)
+        void remove(const _TInvokable& invokable)
         {
             auto it = _invokables.begin();
 
