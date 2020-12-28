@@ -1,5 +1,5 @@
 /**
- * \brief	C++ Events
+ * \brief	C++ event implementation
  * \author	Lukasz Wysocki
  */
 
@@ -110,6 +110,12 @@ namespace event
 
     template<typename TFunc> class event;
 
+    /**
+     * \brief A container class for subscribers to be notified
+     *
+     * \tparam TRet type returned by a callback of a subscriber
+     * \tparam Args arguments accepted by a callback of a subscriber
+     */
     template<typename TRet, typename ...Args>
     class event<TRet(Args...)>
     {
@@ -118,8 +124,13 @@ namespace event
         using _TInvokable = details::invokable_abstract<TRet, Args...>;
 
     public:
-        template<typename ..._Args>
-        TRet operator() (_Args&&... args)
+        /**
+         * \brief The function call operator for notifying subscribers
+         *
+         * \param args arguments that will be passed to subscribed callbacks
+         * \return TRet type returned by a callback of a subscriber
+         */
+        TRet operator() (Args&&... args)
         {
             TRet ret;
 
@@ -131,12 +142,18 @@ namespace event
             return ret;
         }
 
+        /**
+         * \brief Attach function callback
+         */
         void attach(_TFuncPtr func)
         {
             std::shared_ptr<details::invokable_func<TRet, Args...>> ptr(new details::invokable_func<TRet, Args... >(func));
             _invokables.push_back(ptr);
         }
 
+        /**
+         * \brief Attach member function callback
+         */
         template<typename TClass>
         void attach(TRet(TClass::* func) (Args...), TClass& obj)
         {
@@ -144,12 +161,18 @@ namespace event
             _invokables.push_back(ptr);
         }
 
+        /**
+         * \brief Attach member function callback
+         */
         template<typename TClass>
         void attach(TRet(TClass::* func) (Args...), TClass* obj)
         {
             attach(func, *obj);
         }
 
+        /**
+         * \brief Attach member function callback
+         */
         template<typename TBase, typename TClass>
         void attach(TRet(TBase::* func) (Args...), TClass& obj)
         {
@@ -157,18 +180,27 @@ namespace event
             _invokables.push_back(ptr);
         }
 
+        /**
+         * \brief Attach member function callback
+         */
         template<typename TBase, typename TClass>
         void attach(TRet(TBase::* func) (Args...), TClass* obj)
         {
             attach(func, *obj);
         }
 
+        /**
+         * \brief Dettach function callback
+         */
         void detach(_TFuncPtr func)
         {
             details::invokable_func<TRet, Args...> invokable(func);
             remove(invokable);
         }
 
+        /**
+         * \brief Dettach member function callback
+         */
         template<typename TClass>
         void detach(_TFunc TClass::* func, TClass& obj)
         {
@@ -176,12 +208,18 @@ namespace event
             remove(invokable);
         }
 
+        /**
+         * \brief Dettach member function callback
+         */
         template<typename TClass>
         void detach(_TFunc TClass::* func, TClass* obj)
         {
             detach(func, *obj);
         }
 
+        /**
+         * \brief Dettach member function callback
+         */
         template<typename TBase, typename TClass>
         void detach(_TFunc TBase::* func, TClass& obj)
         {
@@ -189,6 +227,9 @@ namespace event
             remove(invokable);
         }
 
+        /**
+         * \brief Dettach member function callback
+         */
         template<typename TBase, typename TClass>
         void detach(_TFunc TBase::* func, TClass* obj)
         {
