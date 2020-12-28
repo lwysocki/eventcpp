@@ -1,14 +1,20 @@
 # C++ Events
 
-Cpp_events is a header-only library that implement C#-like events for C++.
+eventcpp is a library that implement C#-like events for C++.
+
+## Requirements
+
+This library require C++17 standard to be enabled.
 
 ## Installation
 
-Copy header file to folder of your choice and include it in your project.
+This is a header-only library. Copy header file to folder of your choice and
+include it in your project.
 
 ## Usage
 
-Following example shows that single Event instance can handle both functions and non-static methods.
+Following example shows that single event instance can handle functions, static
+member functions, and non-static member functions.
 
 ```C++
 #include <eventcpp/event.hpp>
