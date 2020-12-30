@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.11)
 project(eventcpp VERSION 1.0)
 
 add_library(${PROJECT_NAME} INTERFACE)
@@ -12,6 +12,11 @@ target_include_directories(
     $<INSTALL_INTERFACE:include>)
 
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_17)
+
+if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    enable_testing()
+    add_subdirectory(test/)
+endif()
 
 include(GNUInstallDirs)
 
