@@ -130,9 +130,11 @@ namespace event
          * \param args arguments that will be passed to subscribed callbacks
          * \return TRet type returned by a callback of a subscriber
          */
-        TRet operator() (Args&&... args)
+        template<typename _TRet = TRet>
+        std::enable_if_t<!std::is_same<_TRet, void>::value, _TRet>
+            operator() (Args&&... args)
         {
-            TRet ret;
+            _TRet ret;
 
             for (auto invokable : _invokables)
             {
@@ -140,6 +142,16 @@ namespace event
             }
 
             return ret;
+        }
+
+        template<typename _TRet = TRet>
+        std::enable_if_t<std::is_same<_TRet, void>::value, _TRet>
+            operator() (Args&&... args)
+        {
+            for (auto invokable : _invokables)
+            {
+                std::invoke(*invokable, std::forward<Args>(args)...);
+            }
         }
 
         /**
