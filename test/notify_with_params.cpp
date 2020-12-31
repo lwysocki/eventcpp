@@ -16,24 +16,39 @@ public:
     }
 };
 
-TEST_CASE("event should notify subscribers")
+class ObjExample
 {
+public:
+    int Half(int val)
+    {
+        return val / 2;
+    }
+};
+
+TEST_CASE("event should notify subscribers and passing them parameters")
+{
+    event::event<int (int)> e;
+
     SECTION("function subscriber")
     {
-        event::event<int (int)> e;
         e.attach(Double);
 
         int ret = e(3);
-
         REQUIRE(ret == 6);
     }
     SECTION("static member function subscriber")
     {
-        event::event<int (int)> e;
         e.attach(StaticExample::Triple);
 
         int ret = e(4);
-
         REQUIRE(ret == 12);
+    }
+    SECTION("member function subscriber")
+    {
+        ObjExample obj;
+        e.attach(&ObjExample::Half, obj);
+
+        int ret = e(8);
+        REQUIRE(ret == 4);
     }
 }
