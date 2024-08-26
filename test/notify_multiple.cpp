@@ -2,7 +2,7 @@
 
 #include <eventcpp/event.hpp>
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_test_macros.hpp>
 
 std::array<int, 6> state;
 
