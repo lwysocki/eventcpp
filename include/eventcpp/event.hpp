@@ -6,12 +6,13 @@
 #ifndef __event__
 #define __event__
 
+#include <algorithm>
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <list>
 #include <type_traits>
 #include <string>
+#include <unordered_set>
 
 namespace event
 {
@@ -21,9 +22,16 @@ namespace event
 
         template<typename TRet, typename ...Args>
         inline bool operator!= (const invokable_abstract<TRet, Args...>& lhs,
-            const invokable_abstract<TRet, Args...>& rhs)
+                                const invokable_abstract<TRet, Args...>& rhs)
         {
             return lhs.get_func_ptr() != rhs.get_func_ptr() && lhs.get_obj_ptr() != rhs.get_obj_ptr();
+        }
+
+        template<typename TRet, typename ...Args>
+        inline bool operator== (const invokable_abstract<TRet, Args...>& lhs,
+                                const invokable_abstract<TRet, Args...>& rhs)
+        {
+            return lhs.get_func_ptr() == rhs.get_func_ptr() && lhs.get_obj_ptr() == rhs.get_obj_ptr();
         }
 
         template<typename TRet, typename ...Args>
@@ -33,6 +41,7 @@ namespace event
             virtual TRet operator() (Args&&...) = 0;
             virtual std::string get_func_ptr() const = 0;
             virtual uintptr_t get_obj_ptr() const = 0;
+            virtual size_t get_hash() const = 0;
         };
 
         template<typename TRet, typename ...Args>
@@ -64,6 +73,11 @@ namespace event
             uintptr_t get_obj_ptr() const override
             {
                 return reinterpret_cast<uintptr_t>(nullptr);
+            }
+
+            size_t get_hash() const override
+            {
+                return std::hash<std::string>{}(get_func_ptr());
             }
 
         private:
@@ -100,6 +114,14 @@ namespace event
             uintptr_t get_obj_ptr() const override
             {
                 return reinterpret_cast<uintptr_t>(&_obj);
+            }
+
+            size_t get_hash() const override
+            {
+                size_t func_hash = std::hash<std::string>{}(get_func_ptr());
+                size_t obj_hash = std::hash<uintptr_t>{}(get_obj_ptr());
+
+                return func_hash ^ (obj_hash << 1);
             }
 
         private:
@@ -159,8 +181,7 @@ namespace event
          */
         void attach(_TFuncPtr func)
         {
-            std::shared_ptr<details::invokable_func<TRet, Args...>> ptr(new details::invokable_func<TRet, Args... >(func));
-            _invokables.push_back(ptr);
+            _invokables.emplace(std::make_shared<details::invokable_func<TRet, Args... >>(func));
         }
 
         /**
@@ -169,8 +190,7 @@ namespace event
         template<typename TClass>
         void attach(TRet(TClass::* func) (Args...), TClass& obj)
         {
-            std::shared_ptr<details::invokable_member<TRet, TClass, Args...>> ptr(new details::invokable_member<TRet, TClass, Args...>(func, obj));
-            _invokables.push_back(ptr);
+            _invokables.emplace(std::make_shared<details::invokable_member<TRet, TClass, Args...>>(func, obj));
         }
 
         /**
@@ -188,8 +208,7 @@ namespace event
         template<typename TBase, typename TClass>
         void attach(TRet(TBase::* func) (Args...), TClass& obj)
         {
-            std::shared_ptr<details::invokable_member<TRet, TClass, Args...>> ptr(new details::invokable_member<TRet, TClass, Args...>(func, obj));
-            _invokables.push_back(ptr);
+            _invokables.emplace(std::make_shared<details::invokable_member<TRet, TClass, Args...>>(func, obj));
         }
 
         /**
@@ -249,16 +268,30 @@ namespace event
         }
 
     private:
-        std::list<std::shared_ptr<_TInvokable>> _invokables;
+        struct InvokableHasher
+        {
+            size_t operator()(const std::shared_ptr<_TInvokable>& invokable) const
+            {
+                return invokable.get()->get_hash();
+            }
+        };
+
+        struct InvokableComparator
+        {
+            bool operator()(const std::shared_ptr<_TInvokable>& lhs, const std::shared_ptr<_TInvokable>& rhs) const
+            {
+                return (*lhs) != (*rhs);
+            }
+        };
+
+        std::unordered_set<std::shared_ptr<_TInvokable>, InvokableHasher, InvokableComparator> _invokables;
 
         void remove(const _TInvokable& invokable)
         {
-            auto it = _invokables.begin();
-
-            while (it != _invokables.end() && (*(*it)) != invokable)
+            auto it = std::find_if(_invokables.begin(), _invokables.end(), [&](const auto &element)
             {
-                it++;
-            }
+                return (*element) == invokable;
+            });
 
             if (it != _invokables.end())
             {
