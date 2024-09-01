@@ -3,15 +3,15 @@
  * \author	Lukasz Wysocki
  */
 
-#ifndef __event__
-#define __event__
+#ifndef EVENTCPP_EVENT_HPP
+#define EVENTCPP_EVENT_HPP
 
 #include <algorithm>
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <type_traits>
 #include <string>
+#include <type_traits>
 #include <unordered_set>
 
 namespace event
@@ -39,18 +39,18 @@ namespace event
         {
         public:
             virtual TRet operator() (Args&&...) = 0;
-            virtual std::string get_func_ptr() const = 0;
-            virtual uintptr_t get_obj_ptr() const = 0;
-            virtual size_t get_hash() const = 0;
+            [[nodiscard]] virtual std::string get_func_ptr() const = 0;
+            [[nodiscard]] virtual uintptr_t get_obj_ptr() const = 0;
+            [[nodiscard]] virtual size_t get_hash() const = 0;
         };
 
         template<typename TRet, typename ...Args>
         class invokable_func : public invokable_abstract<TRet, Args...>
         {
-            using _TFuncPtr = typename std::add_pointer<TRet(Args...)>::type;
+            using TFuncPtr = typename std::add_pointer_t<TRet(Args...)>;
 
         public:
-            invokable_func(_TFuncPtr func) : _func(func)
+            explicit invokable_func(TFuncPtr func) : _func(func)
             {
             }
 
@@ -62,36 +62,36 @@ namespace event
                 return std::invoke(_func, std::forward<Args>(args)...);
             }
 
-            std::string get_func_ptr() const override
+            [[nodiscard]] std::string get_func_ptr() const override
             {
-                auto tmp = static_cast<const char*>(static_cast<const void*>(&_func));
+                const auto tmp = static_cast<const char*>(static_cast<const void*>(&_func));
                 std::string tmpstr(tmp);
 
                 return tmpstr;
             }
 
-            uintptr_t get_obj_ptr() const override
+            [[nodiscard]] uintptr_t get_obj_ptr() const override
             {
                 return reinterpret_cast<uintptr_t>(nullptr);
             }
 
-            size_t get_hash() const override
+            [[nodiscard]] size_t get_hash() const override
             {
                 return std::hash<std::string>{}(get_func_ptr());
             }
 
         private:
-            _TFuncPtr _func;
+            TFuncPtr _func;
         };
 
         template<typename TRet, typename TClass, typename ...Args>
         class invokable_member : public invokable_abstract<TRet, Args...>
         {
-            using _TFuncPtr = TRet(TClass::*) (Args...);
-            using _TClassRef = typename std::add_lvalue_reference<TClass>::type;
+            using TFuncPtr = TRet(TClass::*) (Args...);
+            using TClassRef = typename std::add_lvalue_reference_t<TClass>;
 
         public:
-            invokable_member(_TFuncPtr func, _TClassRef obj) : _func(func), _obj(obj)
+            invokable_member(TFuncPtr func, TClassRef obj) : _func(func), _obj(obj)
             {
             }
 
@@ -103,32 +103,32 @@ namespace event
                 return std::invoke(_func, _obj, std::forward<Args>(args)...);
             }
 
-            std::string get_func_ptr() const override
+            [[nodiscard]] std::string get_func_ptr() const override
             {
-                auto tmp = static_cast<const char*>(static_cast<const void*>(&_func));
+                const auto tmp = static_cast<const char*>(static_cast<const void*>(&_func));
                 std::string tmpstr(tmp);
 
                 return tmpstr;
             }
 
-            uintptr_t get_obj_ptr() const override
+            [[nodiscard]] uintptr_t get_obj_ptr() const override
             {
                 return reinterpret_cast<uintptr_t>(&_obj);
             }
 
-            size_t get_hash() const override
+            [[nodiscard]] size_t get_hash() const override
             {
                 size_t func_hash = std::hash<std::string>{}(get_func_ptr());
                 size_t obj_hash = std::hash<uintptr_t>{}(get_obj_ptr());
 
-                return func_hash ^ (obj_hash << 1);
+                return func_hash ^ (obj_hash << 1U);
             }
 
         private:
-            _TFuncPtr _func;
-            _TClassRef _obj;
+            TFuncPtr _func;
+            TClassRef _obj;
         };
-    }
+    } // namespace details
 
     template<typename TFunc> class event;
 
@@ -141,9 +141,9 @@ namespace event
     template<typename TRet, typename ...Args>
     class event<TRet(Args...)>
     {
-        using _TFunc = TRet(Args...);
-        using _TFuncPtr = typename std::add_pointer<_TFunc>::type;
-        using _TInvokable = details::invokable_abstract<TRet, Args...>;
+        using TFunc = TRet(Args...);
+        using TFuncPtr = typename std::add_pointer_t<TFunc>;
+        using TInvokable = details::invokable_abstract<TRet, Args...>;
 
     public:
         /**
@@ -153,7 +153,7 @@ namespace event
          * \return TRet type returned by a callback of a subscriber
          */
         template<typename _TRet = TRet>
-        std::enable_if_t<!std::is_same<_TRet, void>::value, _TRet>
+        std::enable_if_t<!std::is_same_v<_TRet, void>, _TRet>
             operator() (Args&&... args)
         {
             _TRet ret;
@@ -167,7 +167,7 @@ namespace event
         }
 
         template<typename _TRet = TRet>
-        std::enable_if_t<std::is_same<_TRet, void>::value, _TRet>
+        std::enable_if_t<std::is_same_v<_TRet, void>, _TRet>
             operator() (Args&&... args)
         {
             for (auto invokable : _invokables)
@@ -179,7 +179,7 @@ namespace event
         /**
          * \brief Attach function callback
          */
-        void attach(_TFuncPtr func)
+        void attach(TFuncPtr func)
         {
             _invokables.emplace(std::make_shared<details::invokable_func<TRet, Args... >>(func));
         }
@@ -223,7 +223,7 @@ namespace event
         /**
          * \brief Dettach function callback
          */
-        void detach(_TFuncPtr func)
+        void detach(TFuncPtr func)
         {
             details::invokable_func<TRet, Args...> invokable(func);
             remove(invokable);
@@ -233,7 +233,7 @@ namespace event
          * \brief Dettach member function callback
          */
         template<typename TClass>
-        void detach(_TFunc TClass::* func, TClass& obj)
+        void detach(TFunc TClass::* func, TClass& obj)
         {
             details::invokable_member<TRet, TClass, Args...> invokable(func, obj);
             remove(invokable);
@@ -243,7 +243,7 @@ namespace event
          * \brief Dettach member function callback
          */
         template<typename TClass>
-        void detach(_TFunc TClass::* func, TClass* obj)
+        void detach(TFunc TClass::* func, TClass* obj)
         {
             detach(func, *obj);
         }
@@ -252,7 +252,7 @@ namespace event
          * \brief Dettach member function callback
          */
         template<typename TBase, typename TClass>
-        void detach(_TFunc TBase::* func, TClass& obj)
+        void detach(TFunc TBase::* func, TClass& obj)
         {
             details::invokable_member<TRet, TClass, Args...> invokable(func, obj);
             remove(invokable);
@@ -262,7 +262,7 @@ namespace event
          * \brief Dettach member function callback
          */
         template<typename TBase, typename TClass>
-        void detach(_TFunc TBase::* func, TClass* obj)
+        void detach(TFunc TBase::* func, TClass* obj)
         {
             detach(func, *obj);
         }
@@ -270,7 +270,7 @@ namespace event
     private:
         struct InvokableHasher
         {
-            size_t operator()(const std::shared_ptr<_TInvokable>& invokable) const
+            size_t operator()(const std::shared_ptr<TInvokable>& invokable) const
             {
                 return invokable.get()->get_hash();
             }
@@ -278,15 +278,15 @@ namespace event
 
         struct InvokableComparator
         {
-            bool operator()(const std::shared_ptr<_TInvokable>& lhs, const std::shared_ptr<_TInvokable>& rhs) const
+            bool operator()(const std::shared_ptr<TInvokable>& lhs, const std::shared_ptr<TInvokable>& rhs) const
             {
                 return (*lhs) != (*rhs);
             }
         };
 
-        std::unordered_set<std::shared_ptr<_TInvokable>, InvokableHasher, InvokableComparator> _invokables;
+        std::unordered_set<std::shared_ptr<TInvokable>, InvokableHasher, InvokableComparator> _invokables;
 
-        void remove(const _TInvokable& invokable)
+        void remove(const TInvokable& invokable)
         {
             auto it = std::find_if(_invokables.begin(), _invokables.end(), [&](const auto &element)
             {
@@ -299,6 +299,6 @@ namespace event
             }
         }
     };
-}
+} // namespace event
 
-#endif // !__event__
+#endif // !EVENTCPP_EVENT_HPP
