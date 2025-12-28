@@ -121,7 +121,7 @@ namespace event
                 size_t func_hash = std::hash<std::string>{}(get_func_ptr());
                 size_t obj_hash = std::hash<uintptr_t>{}(get_obj_ptr());
 
-                return func_hash ^ (obj_hash << 1U);
+                return func_hash ^ (obj_hash + 0x9e3779b9 + (func_hash << 6) + (func_hash >> 2));
             }
 
         private:
