@@ -51,4 +51,12 @@ TEST_CASE("event should notify subscribers and passing them parameters")
         int ret = e(8);
         REQUIRE(ret == 4);
     }
+    SECTION("lambda subscriber")
+    {
+        auto lambda = [](int val) { return val - 1; };
+        e.attach(lambda);
+
+        int ret = e(1);
+        REQUIRE(ret == 0);
+    }
 }
