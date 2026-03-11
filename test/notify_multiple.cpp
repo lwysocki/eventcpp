@@ -58,7 +58,7 @@ TEST_CASE("event should notify all subscribers")
     e.attach(&ObjExample::Mem, obj2);
 
     e();
-    std::array<int, 6> expected = { 1, 1, 1, 1, 1 , 1 };
+    std::array<int, 6> expected = { 1, 1, 1, 1, 1, 1 };
 
     REQUIRE(state == expected);
 }
