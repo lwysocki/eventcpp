@@ -13,9 +13,7 @@ add_executable(${target_name} event_basic.cpp
                               return_types.cpp
                               notify_with_params.cpp
                               notify_multiple.cpp)
-target_link_libraries(${target_name} PUBLIC eventcpp)
-target_link_libraries(${target_name} PRIVATE Catch2::Catch2WithMain)
-#target_include_directories(${target_name} PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(${target_name} PRIVATE eventcpp Catch2::Catch2WithMain)
 
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 include(CTest)
