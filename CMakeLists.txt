@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.11)
-project(eventcpp VERSION 0.2)
+project(eventcpp VERSION 0.3)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
