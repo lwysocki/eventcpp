@@ -13,6 +13,7 @@
 #include <string>
 #include <type_traits>
 #include <unordered_set>
+#include <utility>
 
 namespace event
 {
@@ -147,32 +148,36 @@ namespace event
 
     public:
         /**
-         * \brief The function call operator for notifying subscribers
+         * \brief Invokes all subscribed callbacks with the provided arguments.*
          *
-         * \param args arguments that will be passed to subscribed callbacks
-         * \return TRet type returned by a callback of a subscriber
+         * This operator forwards arguments to every subscriber in the internal collection.
+         * Because subscribers are stored in an unordered collection, the execution
+         * order is not guaranteed.
+         *
+         * \param args Universal referernce to arguments forwarded to subscribers.
+         * \return If TRet is void, returns nothing. Otherwise, returns the TRet value
+         * produced by the final subscriber visited during iteration. If no subscribers
+         * exist, returns a default-initialized TRet.
          */
-        template<typename _TRet = TRet>
-        std::enable_if_t<!std::is_same_v<_TRet, void>, _TRet>
-            operator() (Args&&... args)
+        auto operator() (Args&&... args)
         {
-            _TRet ret;
-
-            for (auto invokable : _invokables)
+            if constexpr (std::is_same_v<TRet, void>)
             {
-                ret = std::invoke(*invokable, std::forward<Args>(args)...);
+                for (auto invokable : _invokables)
+                {
+                    std::invoke(*invokable, std::forward<Args>(args)...);
+                }
             }
-
-            return ret;
-        }
-
-        template<typename _TRet = TRet>
-        std::enable_if_t<std::is_same_v<_TRet, void>, _TRet>
-            operator() (Args&&... args)
-        {
-            for (auto invokable : _invokables)
+            else
             {
-                std::invoke(*invokable, std::forward<Args>(args)...);
+                TRet return_value{};
+
+                for (auto invokable : _invokables)
+                {
+                    return_value = std::invoke(*invokable, std::forward<Args>(args)...);
+                }
+
+                return return_value;
             }
         }
 
