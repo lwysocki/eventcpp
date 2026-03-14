@@ -26,6 +26,11 @@ TEST_CASE("empty event basic tests")
         }
         SUCCEED("event destroyed without crashing");
     }
+    SECTION("empty event returns default value")
+    {
+        event::event<int ()> e;
+        REQUIRE(e() == 0);
+    }
     SECTION("destruction with subscribers attached")
     {
         {
