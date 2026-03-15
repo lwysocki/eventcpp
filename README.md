@@ -4,7 +4,7 @@ eventcpp is a library that implement C#-like events for C++.
 
 ## Requirements
 
-This library require C++17 standard to be enabled.
+This library require C++20 standard to be enabled.
 
 ## Installation
 
