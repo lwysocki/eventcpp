@@ -142,13 +142,11 @@ namespace event
     template<typename TRet, typename ...Args>
     class event<TRet(Args...)>
     {
-        using TFunc = TRet(Args...);
-        using TFuncPtr = typename std::add_pointer_t<TFunc>;
         using TInvokable = details::invokable_abstract<TRet, Args...>;
 
     public:
         /**
-         * \brief Invokes all subscribed callbacks with the provided arguments.*
+         * \brief Invokes all subscribed callbacks with the provided arguments.
          *
          * This operator forwards arguments to every subscriber in the internal collection.
          * Because subscribers are stored in an unordered collection, the execution
@@ -182,94 +180,71 @@ namespace event
         }
 
         /**
-         * \brief Attach function callback
+         * \brief Universal attach for lambdas, function pointers, and functors.
          */
-        void attach(TFuncPtr func)
+        template<typename F>
+        requires std::invocable<F, Args...> &&
+                 (!std::is_member_function_pointer_v<std::decay_t<F>>)
+        void attach(F&& func)
         {
-            _invokables.emplace(std::make_shared<details::invokable_func<TRet, Args... >>(func));
+            _invokables.emplace(std::make_shared<details::invokable_func<TRet, Args...>>(std::forward<F>(func)));
         }
 
         /**
-         * \brief Attach member function callback
+         * \brief Attach for member functions.
+         * This overload specifically targets member function pointers via object reference.
          */
-        template<typename TClass>
-        void attach(TRet(TClass::* func) (Args...), TClass& obj)
+        template<typename TMemberPtr, typename TObj>
+        requires std::is_member_function_pointer_v<TMemberPtr>
+        void attach(TMemberPtr member_ptr, TObj& obj)
         {
-            _invokables.emplace(std::make_shared<details::invokable_member<TRet, TClass, Args...>>(func, obj));
+            _invokables.emplace(std::make_shared<details::invokable_member<TRet, TObj, Args...>>(member_ptr, obj));
         }
 
         /**
-         * \brief Attach member function callback
+         * \brief Attach for member functions.
+         * This overload specifically targets member function pointers via object pointer.
          */
-        template<typename TClass>
-        void attach(TRet(TClass::* func) (Args...), TClass* obj)
+        template<typename TMemberPtr, typename TObj>
+        requires std::is_member_function_pointer_v<TMemberPtr>
+        void attach(TMemberPtr member_ptr, TObj* obj)
         {
-            attach(func, *obj);
+            attach(member_ptr, *obj);
         }
 
         /**
-         * \brief Attach member function callback
+         * \brief Universal detach for lambdas, function pointers, and functors.
          */
-        template<typename TBase, typename TClass>
-        void attach(TRet(TBase::* func) (Args...), TClass& obj)
+        template<typename F>
+        requires std::invocable<F, Args...> &&
+                 (!std::is_member_function_pointer_v<std::decay_t<F>>)
+        void detach(F&& func)
         {
-            _invokables.emplace(std::make_shared<details::invokable_member<TRet, TClass, Args...>>(func, obj));
-        }
-
-        /**
-         * \brief Attach member function callback
-         */
-        template<typename TBase, typename TClass>
-        void attach(TRet(TBase::* func) (Args...), TClass* obj)
-        {
-            attach(func, *obj);
-        }
-
-        /**
-         * \brief Dettach function callback
-         */
-        void detach(TFuncPtr func)
-        {
-            details::invokable_func<TRet, Args...> invokable(func);
+            details::invokable_func<TRet, Args...> invokable(std::forward<F>(func));
             remove(invokable);
         }
 
         /**
-         * \brief Dettach member function callback
+         * \brief Dettach for member functions.
+         * This overload specifically targets member function pointers via object reference.
          */
-        template<typename TClass>
-        void detach(TFunc TClass::* func, TClass& obj)
+        template<typename TMemberPtr, typename TObj>
+        requires std::is_member_function_pointer_v<TMemberPtr>
+        void detach(TMemberPtr member_ptr, TObj& obj)
         {
-            details::invokable_member<TRet, TClass, Args...> invokable(func, obj);
+            details::invokable_member<TRet, TObj, Args...> invokable(member_ptr, obj);
             remove(invokable);
         }
 
         /**
-         * \brief Dettach member function callback
+         * \brief Dettach for member functions.
+         * This overload specifically targets member function pointers via object pointer.
          */
-        template<typename TClass>
-        void detach(TFunc TClass::* func, TClass* obj)
+        template<typename TMemberPtr, typename TObj>
+        requires std::is_member_function_pointer_v<TMemberPtr>
+        void detach(TMemberPtr member_ptr, TObj* obj)
         {
-            detach(func, *obj);
-        }
-
-        /**
-         * \brief Dettach member function callback
-         */
-        template<typename TBase, typename TClass>
-        void detach(TFunc TBase::* func, TClass& obj)
-        {
-            details::invokable_member<TRet, TClass, Args...> invokable(func, obj);
-            remove(invokable);
-        }
-
-        /**
-         * \brief Dettach member function callback
-         */
-        template<typename TBase, typename TClass>
-        void detach(TFunc TBase::* func, TClass* obj)
-        {
-            detach(func, *obj);
+            detach(member_ptr, *obj);
         }
 
     private:
