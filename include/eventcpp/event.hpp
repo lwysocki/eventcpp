@@ -85,14 +85,14 @@ namespace event
             TFuncPtr _func;
         };
 
-        template<typename TRet, typename TClass, typename ...Args>
+        template<typename TRet, typename TObj, typename ...Args>
         class invokable_member : public invokable_abstract<TRet, Args...>
         {
-            using TFuncPtr = TRet(TClass::*) (Args...);
-            using TClassRef = typename std::add_lvalue_reference_t<TClass>;
+            using TFuncPtr = TRet(TObj::*) (Args...);
+            using TObjRef = typename std::add_lvalue_reference_t<TObj>;
 
         public:
-            invokable_member(TFuncPtr func, TClassRef obj) : _func(func), _obj(obj)
+            invokable_member(TFuncPtr func, TObjRef obj) : _func(func), _obj(obj)
             {
             }
 
@@ -127,7 +127,7 @@ namespace event
 
         private:
             TFuncPtr _func;
-            TClassRef _obj;
+            TObjRef _obj;
         };
     } // namespace details
 
