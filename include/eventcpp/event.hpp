@@ -152,12 +152,14 @@ namespace event
          * Because subscribers are stored in an unordered collection, the execution
          * order is not guaranteed.
          *
+         * \tparam CallArgs arguments accepted by a callback
          * \param args Universal referernce to arguments forwarded to subscribers.
          * \return If TRet is void, returns nothing. Otherwise, returns the TRet value
          * produced by the final subscriber visited during iteration. If no subscribers
          * exist, returns a default-initialized TRet.
          */
-        auto operator() (Args&&... args)
+        template<typename... CallArgs>
+        auto operator() (CallArgs&&... args)
         {
             if constexpr (std::is_same_v<TRet, void>)
             {
