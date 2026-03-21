@@ -153,7 +153,7 @@ namespace event
          * order is not guaranteed.
          *
          * \tparam CallArgs arguments accepted by a callback
-         * \param args Universal referernce to arguments forwarded to subscribers.
+         * \param args Universal reference to arguments forwarded to subscribers.
          * \return If TRet is void, returns nothing. Otherwise, returns the TRet value
          * produced by the final subscriber visited during iteration. If no subscribers
          * exist, returns a default-initialized TRet.
@@ -183,6 +183,8 @@ namespace event
 
         /**
          * \brief Universal attach for lambdas, function pointers, and functors.
+         *
+         * \param func The callable object to subscribe to the event.
          */
         template<typename F>
         requires std::invocable<F, Args...> &&
@@ -194,7 +196,11 @@ namespace event
 
         /**
          * \brief Attach for member functions.
+         *
          * This overload specifically targets member function pointers via object reference.
+         *
+         * \param member_ptr Pointer to the member function.
+         * \param obj Object passed by reference to invoke member function.
          */
         template<typename TMemberPtr, typename TObj>
         requires std::is_member_function_pointer_v<TMemberPtr>
@@ -205,7 +211,11 @@ namespace event
 
         /**
          * \brief Attach for member functions.
+         *
          * This overload specifically targets member function pointers via object pointer.
+         *
+         * \param member_ptr Pointer to the member function.
+         * \param obj Object passed by pointer to invoke member function.
          */
         template<typename TMemberPtr, typename TObj>
         requires std::is_member_function_pointer_v<TMemberPtr>
@@ -216,6 +226,8 @@ namespace event
 
         /**
          * \brief Universal detach for lambdas, function pointers, and functors.
+         *
+         * \param func The callable object to unsubscribe from the event.
          */
         template<typename F>
         requires std::invocable<F, Args...> &&
@@ -227,8 +239,12 @@ namespace event
         }
 
         /**
-         * \brief Dettach for member functions.
+         * \brief Detach for member functions.
+         *
          * This overload specifically targets member function pointers via object reference.
+         *
+         * \param member_ptr Pointer to the member function.
+         * \param obj Object passed by reference to invoke member function.
          */
         template<typename TMemberPtr, typename TObj>
         requires std::is_member_function_pointer_v<TMemberPtr>
@@ -239,8 +255,12 @@ namespace event
         }
 
         /**
-         * \brief Dettach for member functions.
+         * \brief Detach for member functions.
+         *
          * This overload specifically targets member function pointers via object pointer.
+         *
+         * \param member_ptr Pointer to the member function.
+         * \param obj Object passed by pointer to invoke member function.
          */
         template<typename TMemberPtr, typename TObj>
         requires std::is_member_function_pointer_v<TMemberPtr>
