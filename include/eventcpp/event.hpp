@@ -202,11 +202,11 @@ namespace event
          * \param member_ptr Pointer to the member function.
          * \param obj Object passed by reference to invoke member function.
          */
-        template<typename TMemberPtr, typename TObj>
-        requires std::is_member_function_pointer_v<TMemberPtr>
-        void attach(TMemberPtr member_ptr, TObj& obj)
+        template<typename M, typename T>
+        requires std::is_member_function_pointer_v<M>
+        void attach(M member_ptr, T& obj)
         {
-            _invokables.emplace(std::make_shared<details::invokable_member<TRet, TObj, Args...>>(member_ptr, obj));
+            _invokables.emplace(std::make_shared<details::invokable_member<TRet, T, Args...>>(member_ptr, obj));
         }
 
         /**
@@ -217,9 +217,9 @@ namespace event
          * \param member_ptr Pointer to the member function.
          * \param obj Object passed by pointer to invoke member function.
          */
-        template<typename TMemberPtr, typename TObj>
-        requires std::is_member_function_pointer_v<TMemberPtr>
-        void attach(TMemberPtr member_ptr, TObj* obj)
+        template<typename M, typename T>
+        requires std::is_member_function_pointer_v<M>
+        void attach(M member_ptr, T* obj)
         {
             attach(member_ptr, *obj);
         }
@@ -246,11 +246,11 @@ namespace event
          * \param member_ptr Pointer to the member function.
          * \param obj Object passed by reference to invoke member function.
          */
-        template<typename TMemberPtr, typename TObj>
-        requires std::is_member_function_pointer_v<TMemberPtr>
-        void detach(TMemberPtr member_ptr, TObj& obj)
+        template<typename M, typename T>
+        requires std::is_member_function_pointer_v<M>
+        void detach(M member_ptr, T& obj)
         {
-            details::invokable_member<TRet, TObj, Args...> invokable(member_ptr, obj);
+            details::invokable_member<TRet, T, Args...> invokable(member_ptr, obj);
             remove(invokable);
         }
 
@@ -262,9 +262,9 @@ namespace event
          * \param member_ptr Pointer to the member function.
          * \param obj Object passed by pointer to invoke member function.
          */
-        template<typename TMemberPtr, typename TObj>
-        requires std::is_member_function_pointer_v<TMemberPtr>
-        void detach(TMemberPtr member_ptr, TObj* obj)
+        template<typename M, typename T>
+        requires std::is_member_function_pointer_v<M>
+        void detach(M member_ptr, T* obj)
         {
             detach(member_ptr, *obj);
         }
