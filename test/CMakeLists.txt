@@ -18,10 +18,12 @@ FetchContent_MakeAvailable(benchmark)
 
 set(target_name eventcpp_test)
 
-add_executable(${target_name} event_basic.cpp
-                              return_types.cpp
-                              notify_with_params.cpp
-                              notify_multiple.cpp)
+add_executable(${target_name} sanity_test.cpp
+                              free_functions_test.cpp
+                              member_functions_test.cpp
+                              polymorphism_test.cpp
+                              signature_test.cpp
+                              multi_subscriber_test.cpp)
 target_link_libraries(${target_name} PRIVATE eventcpp Catch2::Catch2WithMain)
 
 set(target_benchmark eventcpp_benchmark)
