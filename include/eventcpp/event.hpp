@@ -7,42 +7,21 @@
 #define EVENTCPP_EVENT_HPP
 
 #include <algorithm>
-#include <cstdint>
 #include <functional>
 #include <memory>
-#include <string>
 #include <type_traits>
-#include <unordered_set>
+#include <unordered_map>
 #include <utility>
 
 namespace event
 {
     namespace details
     {
-        template<typename TRet, typename ...Args> class invokable_abstract;
-
-        template<typename TRet, typename ...Args>
-        inline bool operator!= (const invokable_abstract<TRet, Args...>& lhs,
-                                const invokable_abstract<TRet, Args...>& rhs)
-        {
-            return lhs.get_func_ptr() != rhs.get_func_ptr() && lhs.get_obj_ptr() != rhs.get_obj_ptr();
-        }
-
-        template<typename TRet, typename ...Args>
-        inline bool operator== (const invokable_abstract<TRet, Args...>& lhs,
-                                const invokable_abstract<TRet, Args...>& rhs)
-        {
-            return lhs.get_func_ptr() == rhs.get_func_ptr() && lhs.get_obj_ptr() == rhs.get_obj_ptr();
-        }
-
         template<typename TRet, typename ...Args>
         class invokable_abstract
         {
         public:
             virtual TRet operator() (Args&&...) = 0;
-            [[nodiscard]] virtual std::string get_func_ptr() const = 0;
-            [[nodiscard]] virtual uintptr_t get_obj_ptr() const = 0;
-            [[nodiscard]] virtual size_t get_hash() const = 0;
         };
 
         template<typename TRet, typename ...Args>
@@ -61,24 +40,6 @@ namespace event
                     throw std::bad_function_call();
 
                 return std::invoke(_func, std::forward<Args>(args)...);
-            }
-
-            [[nodiscard]] std::string get_func_ptr() const override
-            {
-                const auto tmp = static_cast<const char*>(static_cast<const void*>(&_func));
-                std::string tmpstr(tmp);
-
-                return tmpstr;
-            }
-
-            [[nodiscard]] uintptr_t get_obj_ptr() const override
-            {
-                return reinterpret_cast<uintptr_t>(nullptr);
-            }
-
-            [[nodiscard]] size_t get_hash() const override
-            {
-                return std::hash<std::string>{}(get_func_ptr());
             }
 
         private:
@@ -104,27 +65,6 @@ namespace event
                 return std::invoke(_func, _obj, std::forward<Args>(args)...);
             }
 
-            [[nodiscard]] std::string get_func_ptr() const override
-            {
-                const auto tmp = static_cast<const char*>(static_cast<const void*>(&_func));
-                std::string tmpstr(tmp);
-
-                return tmpstr;
-            }
-
-            [[nodiscard]] uintptr_t get_obj_ptr() const override
-            {
-                return reinterpret_cast<uintptr_t>(&_obj);
-            }
-
-            [[nodiscard]] size_t get_hash() const override
-            {
-                size_t func_hash = std::hash<std::string>{}(get_func_ptr());
-                size_t obj_hash = std::hash<uintptr_t>{}(get_obj_ptr());
-
-                return func_hash ^ (obj_hash + 0x9e3779b9 + (func_hash << 6) + (func_hash >> 2));
-            }
-
         private:
             TFuncPtr _func;
             TObjRef _obj;
@@ -132,6 +72,7 @@ namespace event
     } // namespace details
 
     template<typename TFunc> class event;
+    template<typename TFunc> class connection;
 
     /**
      * \brief A container class for subscribers to be notified
@@ -145,6 +86,34 @@ namespace event
         using TInvokable = details::invokable_abstract<TRet, Args...>;
 
     public:
+        event()
+        {
+            _link = std::make_shared<link>(this);
+        }
+
+        event(event<TRet(Args...)>&& other) noexcept : _link(std::move(other._link)), _invokables(std::move(other._invokables))
+        {
+        }
+
+        event<TRet(Args...)>& operator=(event<TRet(Args...)>&& other) noexcept
+        {
+            if (this == &other) return *this;
+
+            _link = std::move(other._link);
+            _invokables = std::move(other._invokables);
+
+            if (_link)
+                _link->_event_ptr = this;
+
+            return *this;
+        }
+
+        ~event()
+        {
+            if (_link)
+                _link->_event_ptr = nullptr;
+        }
+
         /**
          * \brief Invokes all subscribed callbacks with the provided arguments.
          *
@@ -165,7 +134,7 @@ namespace event
             {
                 for (auto invokable : _invokables)
                 {
-                    std::invoke(*invokable, std::forward<Args>(args)...);
+                    std::invoke(*invokable.second, std::forward<Args>(args)...);
                 }
             }
             else
@@ -174,7 +143,7 @@ namespace event
 
                 for (auto invokable : _invokables)
                 {
-                    return_value = std::invoke(*invokable, std::forward<Args>(args)...);
+                    return_value = std::invoke(*invokable.second, std::forward<Args>(args)...);
                 }
 
                 return return_value;
@@ -189,9 +158,12 @@ namespace event
         template<typename F>
         requires std::invocable<F, Args...> &&
                  (!std::is_member_function_pointer_v<std::decay_t<F>>)
-        void attach(F&& func)
+        auto attach(F&& func)
         {
-            _invokables.emplace(std::make_shared<details::invokable_func<TRet, Args...>>(std::forward<F>(func)));
+            connection<TRet(Args...)> connection(_link->weak_from_this(), std::make_shared<details::invokable_func<TRet, Args...>>(std::forward<F>(func)));
+            _invokables.emplace(connection._token.get(), connection._token);
+
+            return connection;
         }
 
         /**
@@ -204,9 +176,12 @@ namespace event
          */
         template<typename M, typename T>
         requires std::is_member_function_pointer_v<M>
-        void attach(M member_ptr, T& obj)
+        auto attach(M member_ptr, T& obj)
         {
-            _invokables.emplace(std::make_shared<details::invokable_member<TRet, T, Args...>>(member_ptr, obj));
+            connection<TRet(Args...)> connection(_link->weak_from_this(), std::make_shared<details::invokable_member<TRet, T, Args...>>(member_ptr, obj));
+            _invokables.emplace(connection._token.get(), connection._token);
+
+            return connection;
         }
 
         /**
@@ -219,87 +194,89 @@ namespace event
          */
         template<typename M, typename T>
         requires std::is_member_function_pointer_v<M>
-        void attach(M member_ptr, T* obj)
+        auto attach(M member_ptr, T* obj)
         {
-            attach(member_ptr, *obj);
+            return attach(member_ptr, *obj);
         }
 
         /**
-         * \brief Universal detach for lambdas, function pointers, and functors.
+         * \brief Detach subscriber.
          *
-         * \param func The callable object to unsubscribe from the event.
+         * \param connection Connection object used to identify subscriber.
          */
-        template<typename F>
-        requires std::invocable<F, Args...> &&
-                 (!std::is_member_function_pointer_v<std::decay_t<F>>)
-        void detach(F&& func)
+        void detach(const connection<TRet(Args...)>& connection)
         {
-            details::invokable_func<TRet, Args...> invokable(std::forward<F>(func));
-            remove(invokable);
-        }
-
-        /**
-         * \brief Detach for member functions.
-         *
-         * This overload specifically targets member function pointers via object reference.
-         *
-         * \param member_ptr Pointer to the member function.
-         * \param obj Object passed by reference to invoke member function.
-         */
-        template<typename M, typename T>
-        requires std::is_member_function_pointer_v<M>
-        void detach(M member_ptr, T& obj)
-        {
-            details::invokable_member<TRet, T, Args...> invokable(member_ptr, obj);
-            remove(invokable);
-        }
-
-        /**
-         * \brief Detach for member functions.
-         *
-         * This overload specifically targets member function pointers via object pointer.
-         *
-         * \param member_ptr Pointer to the member function.
-         * \param obj Object passed by pointer to invoke member function.
-         */
-        template<typename M, typename T>
-        requires std::is_member_function_pointer_v<M>
-        void detach(M member_ptr, T* obj)
-        {
-            detach(member_ptr, *obj);
+            _invokables.erase(connection._token.get());
         }
 
     private:
-        struct InvokableHasher
+        friend connection<TRet(Args...)>;
+
+        class link : public std::enable_shared_from_this<link>
         {
-            size_t operator()(const std::shared_ptr<TInvokable>& invokable) const
+        public:
+            link(event<TRet(Args...)>* event_ptr) : _event_ptr(event_ptr)
             {
-                return invokable.get()->get_hash();
             }
+
+            void detach(const connection<TRet(Args...)>& connection)
+            {
+                _event_ptr->detach(connection);
+            }
+
+        private:
+            friend event<TRet(Args...)>;
+
+            event<TRet(Args...)>* _event_ptr;
         };
 
-        struct InvokableComparator
+        std::shared_ptr<link> _link;
+        std::unordered_map<TInvokable*, std::shared_ptr<TInvokable>> _invokables;
+    };
+
+    template<typename TRet, typename ...Args>
+    class connection<TRet(Args...)>
+    {
+    public:
+        connection() = default;
+
+        connection(connection<TRet(Args...)>&& other) noexcept : _link(std::move(other._link)), _token(std::move(other._token))
         {
-            bool operator()(const std::shared_ptr<TInvokable>& lhs, const std::shared_ptr<TInvokable>& rhs) const
-            {
-                return (*lhs) != (*rhs);
-            }
-        };
+        }
 
-        std::unordered_set<std::shared_ptr<TInvokable>, InvokableHasher, InvokableComparator> _invokables;
-
-        void remove(const TInvokable& invokable)
+        connection<TRet(Args...)>& operator=(connection<TRet(Args...)>&& other) noexcept
         {
-            auto it = std::find_if(_invokables.begin(), _invokables.end(), [&](const auto &element)
-            {
-                return (*element) == invokable;
-            });
+            if (this == &other) return *this;
 
-            if (it != _invokables.end())
+            _link = std::move(other._link);
+            _token = std::move(other._token);
+            other._token.reset();
+
+            return *this;
+        }
+
+        ~connection() = default;
+
+        void disconnect()
+        {
+            if (_token == nullptr) return;
+
+            if (auto shared = _link.lock())
             {
-                _invokables.erase(it);
+                shared->detach(*this);
+                _token.reset();
             }
         }
+
+    private:
+        friend event<TRet(Args...)>;
+
+        connection(std::weak_ptr<typename event<TRet(Args...)>::link> link, std::shared_ptr<details::invokable_abstract<TRet, Args...>> token) : _link(link), _token(token)
+        {
+        }
+
+        std::weak_ptr<typename event<TRet(Args...)>::link> _link;
+        std::shared_ptr<details::invokable_abstract<TRet, Args...>> _token;
     };
 } // namespace event
 
