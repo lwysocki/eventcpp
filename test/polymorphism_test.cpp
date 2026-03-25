@@ -33,9 +33,9 @@ TEST_CASE("polymorphic subscribers")
     SECTION("attach call detach call")
     {
         polymorphism_tester tester;
-        e.attach(&base::func, tester);
+        auto connection = e.attach(&base::func, tester);
         e();
-        e.detach(&base::func, tester);
+        e.detach(connection);
         e();
 
         REQUIRE(call_count == 1);
@@ -44,12 +44,12 @@ TEST_CASE("polymorphic subscribers")
     SECTION("subscribe from different base classes")
     {
         polymorphism_tester tester;
-        e.attach(&base::func, tester);
-        e.attach(&another_base::func, tester);
+        auto connection = e.attach(&base::func, tester);
+        auto another_connection = e.attach(&another_base::func, tester);
         e();
-        e.detach(&base::func, tester);
+        e.detach(connection);
         e();
-        e.detach(&another_base::func, tester);
+        e.detach(another_connection);
         e();
 
         REQUIRE(call_count == 3);

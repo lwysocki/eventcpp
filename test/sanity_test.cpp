@@ -40,8 +40,9 @@ TEST_CASE("event sanity check")
     }
     SECTION("detach from empty event")
     {
-        event::event<void()> e;
-        e.detach(count_calls);
+        event::event<void ()> e;
+        event::connection<void ()> conn;
+        e.detach(conn);
 
         SUCCEED("detached from empty event without crashing");
     }

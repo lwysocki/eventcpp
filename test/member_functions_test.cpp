@@ -28,9 +28,9 @@ TEST_CASE("member function subscribers")
     SECTION("double detach safety")
     {
         member_function_tester tester;
-        e.attach(&member_function_tester::func, tester);
-        e.detach(&member_function_tester::func, tester);
-        e.detach(&member_function_tester::func, tester);
+        auto connection = e.attach(&member_function_tester::func, tester);
+        e.detach(connection);
+        e.detach(connection);
         e();
         REQUIRE(call_count == 0);
     }

@@ -22,9 +22,9 @@ TEST_CASE("lambda subscribers")
     }
     SECTION("double detach safety")
     {
-        e.attach(func);
-        e.detach(func);
-        e.detach(func);
+        auto connection = e.attach(func);
+        e.detach(connection);
+        e.detach(connection);
         e();
         REQUIRE(call_count == 0);
     }
