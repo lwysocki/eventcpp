@@ -19,6 +19,7 @@ FetchContent_MakeAvailable(benchmark)
 set(target_name eventcpp_test)
 
 add_executable(${target_name} sanity_test.cpp
+                              connection_test.cpp
                               free_functions_test.cpp
                               member_functions_test.cpp
                               polymorphism_test.cpp
