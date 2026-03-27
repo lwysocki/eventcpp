@@ -36,6 +36,8 @@ namespace
 
         int func() { return _value; }
     };
+
+    int call_count;
 }
 
 TEST_CASE("event notify all subscribers")
@@ -68,4 +70,21 @@ TEST_CASE("multiple subscribers return value")
     int returned_value = e();
 
     REQUIRE((returned_value == 1 || returned_value == 2));
+}
+
+TEST_CASE("address reuse stress test")
+{
+    const int limit = 1000;
+    event::event<void ()> e;
+    call_count = 0;
+    auto count_calls = []() { call_count++; };
+
+    for (int i = 0; i < limit; i++)
+    {
+        auto c = e.attach(count_calls);
+        e();
+        c.disconnect();
+    }
+
+    REQUIRE(call_count == limit);
 }

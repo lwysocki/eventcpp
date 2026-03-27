@@ -46,13 +46,27 @@ TEST_CASE("event sanity check")
 
         SUCCEED("detached from empty event without crashing");
     }
-    SECTION("move semantics")
-    {
-        event::event<void ()> e;
-        e.attach(count_calls);
+}
 
-        event::event<void ()> e_moved = std::move(e);
-        e_moved();
+TEST_CASE("event move semantics")
+{
+    event::event<void ()> e;
+    e.attach(count_calls);
+
+    SECTION("move constructor")
+    {
+        event::event<void ()> e2(std::move(e));
+        e2();
+        int current_count = call_count;
+        e();
+
+        REQUIRE(call_count == current_count);
+    }
+
+    SECTION("move assignment")
+    {
+        event::event<void ()> e2 = std::move(e);
+        e2();
         int current_count = call_count;
         e();
 
