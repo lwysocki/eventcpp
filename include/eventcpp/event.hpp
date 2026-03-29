@@ -132,7 +132,7 @@ namespace event
         {
             if constexpr (std::is_same_v<TRet, void>)
             {
-                for (auto invokable : _invokables)
+                for (const auto& invokable : _invokables)
                 {
                     std::invoke(*invokable.second, std::forward<Args>(args)...);
                 }
@@ -141,7 +141,7 @@ namespace event
             {
                 TRet return_value{};
 
-                for (auto invokable : _invokables)
+                for (const auto& invokable : _invokables)
                 {
                     return_value = std::invoke(*invokable.second, std::forward<Args>(args)...);
                 }
