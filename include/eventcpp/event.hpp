@@ -132,7 +132,7 @@ namespace event
         {
             if constexpr (std::is_same_v<TRet, void>)
             {
-                for (auto invokable : _invokables)
+                for (const auto& invokable : _invokables)
                 {
                     std::invoke(*invokable.second, std::forward<Args>(args)...);
                 }
@@ -141,7 +141,7 @@ namespace event
             {
                 TRet return_value{};
 
-                for (auto invokable : _invokables)
+                for (const auto& invokable : _invokables)
                 {
                     return_value = std::invoke(*invokable.second, std::forward<Args>(args)...);
                 }
@@ -160,8 +160,9 @@ namespace event
                  (!std::is_member_function_pointer_v<std::decay_t<F>>)
         auto attach(F&& func)
         {
-            connection<TRet(Args...)> connection(_link->weak_from_this(), std::make_shared<details::invokable_func<TRet, Args...>>(std::forward<F>(func)));
-            _invokables.emplace(connection._token.get(), connection._token);
+            auto id = ++_counter;
+            _invokables.try_emplace(id, std::make_shared<details::invokable_func<TRet, Args...>>(std::forward<F>(func)));
+            connection<TRet(Args...)> connection(_link->weak_from_this(), id);
 
             return connection;
         }
@@ -178,8 +179,9 @@ namespace event
         requires std::is_member_function_pointer_v<M>
         auto attach(M member_ptr, T& obj)
         {
-            connection<TRet(Args...)> connection(_link->weak_from_this(), std::make_shared<details::invokable_member<TRet, T, Args...>>(member_ptr, obj));
-            _invokables.emplace(connection._token.get(), connection._token);
+            auto id = ++_counter;
+            _invokables.try_emplace(id, std::make_shared<details::invokable_member<TRet, T, Args...>>(member_ptr, obj));
+            connection<TRet(Args...)> connection(_link->weak_from_this(), id);
 
             return connection;
         }
@@ -206,7 +208,10 @@ namespace event
          */
         void detach(const connection<TRet(Args...)>& connection)
         {
-            _invokables.erase(connection._token.get());
+            if (connection._token == 0) return;
+
+            _invokables.erase(connection._token);
+            connection._token = 0;
         }
 
     private:
@@ -230,8 +235,9 @@ namespace event
             event<TRet(Args...)>* _event_ptr;
         };
 
+        uint64_t _counter{};
         std::shared_ptr<link> _link;
-        std::unordered_map<TInvokable*, std::shared_ptr<TInvokable>> _invokables;
+        std::unordered_map<uint64_t, std::shared_ptr<TInvokable>> _invokables;
     };
 
     template<typename TRet, typename ...Args>
@@ -240,8 +246,9 @@ namespace event
     public:
         connection() = default;
 
-        connection(connection<TRet(Args...)>&& other) noexcept : _link(std::move(other._link)), _token(std::move(other._token))
+        connection(connection<TRet(Args...)>&& other) noexcept : _link(std::move(other._link)), _token(other._token)
         {
+            other._token = 0;
         }
 
         connection<TRet(Args...)>& operator=(connection<TRet(Args...)>&& other) noexcept
@@ -249,8 +256,8 @@ namespace event
             if (this == &other) return *this;
 
             _link = std::move(other._link);
-            _token = std::move(other._token);
-            other._token.reset();
+            _token = other._token;
+            other._token = 0;
 
             return *this;
         }
@@ -259,24 +266,23 @@ namespace event
 
         void disconnect()
         {
-            if (_token == nullptr) return;
+            if (_token == 0) return;
 
             if (auto shared = _link.lock())
             {
                 shared->detach(*this);
-                _token.reset();
             }
         }
 
     private:
         friend event<TRet(Args...)>;
 
-        connection(std::weak_ptr<typename event<TRet(Args...)>::link> link, std::shared_ptr<details::invokable_abstract<TRet, Args...>> token) : _link(link), _token(token)
+        connection(std::weak_ptr<typename event<TRet(Args...)>::link> link, uint64_t token) : _link(link), _token(token)
         {
         }
 
         std::weak_ptr<typename event<TRet(Args...)>::link> _link;
-        std::shared_ptr<details::invokable_abstract<TRet, Args...>> _token;
+        mutable uint64_t _token{};
     };
 } // namespace event
 
